@@ -1,4 +1,4 @@
-# XY Pad Audio Plugin
+# XY Pad - Stereo Delay
 
 The XY Pad Audio plugin is an advanced audio tool designed to add an intriguing stereo dimension to the audio signal by dynamically manipulating delay times. Developed using the JUCE library, a renowned framework for audio software creation, this plugin stands out for its ability to control delay separately for the left and right channels, enabling users to craft custom stereo effects in real time.
 
