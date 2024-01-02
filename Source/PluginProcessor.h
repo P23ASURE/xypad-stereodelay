@@ -9,7 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-
+#include "Filters.h"
 //==============================================================================
 /**
 */
@@ -56,11 +56,31 @@ public:
 
     AudioProcessorValueTreeState& getApvts();
     
+    void updateFilters(float hpfFreq, float lpfFreq) {
+        // Assuming a fixed resonance value; adjust as needed.
+        float resonance = 0.707;
+        filters.setHPFParameters(hpfFreq, resonance);
+        filters.setLPFParameters(lpfFreq, resonance);
+    }
+
+    float XyPadAudioProcessor::smoothParameterChange(float oldValue, float newValue)
+    {
+        // Adjust the factor based on how quickly you want the parameter to change
+        const float smoothingFactor = 0.01f;
+        return oldValue + smoothingFactor * (newValue - oldValue);
+    }
+
 private:
+    float prevDelayTime = 0.0f;
+    float prevDryWetValue = 0.0f;
+    float prevHPFFrequency = 0.0f;
+    float prevLPFFrequency = 0.0f;
+
     void parameterChanged(const String& parameterID, float newValue) override;
 	
     AudioProcessorValueTreeState parameters;
 
+    Filters filters;
 
     // Variabili per il buffer di ritardo
     juce::AudioBuffer<float> delayBuffer;

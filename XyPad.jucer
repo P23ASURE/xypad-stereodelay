@@ -2,7 +2,7 @@
 
 <JUCERPROJECT id="rsaLIQ" name="XyPad" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="1" displaySplashScreen="1" jucerFormatVersion="1"
-              companyName="TiltAudio">
+              version="0.2">
   <MAINGROUP id="bNnxiK" name="XyPad">
     <GROUP id="{181400A6-53E7-72E4-E989-6AB31C05DB65}" name="Source">
       <GROUP id="{473BD155-B679-A1F7-EC30-F6F869403660}" name="Component">
@@ -16,6 +16,8 @@
       <FILE id="dWWtTT" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
       <FILE id="RZs8ye" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+      <FILE id="N3FtEf" name="Filters.cpp" compile="1" resource="0" file="Source/Filters.cpp"/>
+      <FILE id="dWvFzq" name="Filters.h" compile="0" resource="0" file="Source/Filters.h"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0"/>

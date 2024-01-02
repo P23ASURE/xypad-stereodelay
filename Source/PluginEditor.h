@@ -15,7 +15,7 @@
 //==============================================================================
 /**
 */
-class XyPadAudioProcessorEditor  : public juce::AudioProcessorEditor
+class XyPadAudioProcessorEditor  : public juce::AudioProcessorEditor, public juce::Slider::Listener
 {
 public:
     XyPadAudioProcessorEditor (XyPadAudioProcessor&);
@@ -25,10 +25,18 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
+    void sliderValueChanged(juce::Slider* slider) override;
 private:
+
     using SliderAttachment = AudioProcessorValueTreeState::SliderAttachment;
 	
     XyPadAudioProcessor& audioProcessor;
+
+    juce::Slider hpfLpfSlider;
+    juce::Label hpfLabel;
+    juce::Label lpfLabel;
+    std::unique_ptr<SliderAttachment> hpfAttachment;
+    std::unique_ptr<SliderAttachment> lpfAttachment;
 
     Slider delayTimeSlider{ Slider::SliderStyle::RotaryHorizontalVerticalDrag, Slider::TextBoxBelow };
     Slider dryWetMixSlider{ Slider::SliderStyle::RotaryHorizontalVerticalDrag, Slider::TextBoxBelow };

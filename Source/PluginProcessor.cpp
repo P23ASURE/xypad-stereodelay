@@ -16,8 +16,9 @@ XyPadAudioProcessor::XyPadAudioProcessor() :
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
     parameters(*this, nullptr, "xypad", {
     std::make_unique<AudioParameterFloat>("delayTime", "Delay Time", NormalisableRange<float>(-17.5f, 17.5f, 0.01f), 0.f),
-    std::make_unique<AudioParameterFloat>("dryWetMix", "Dry/Wet Mix", NormalisableRange<float>(0.f, 1.f, 0.01f), 0.5f)
-
+    std::make_unique<AudioParameterFloat>("dryWetMix", "Dry/Wet Mix", NormalisableRange<float>(0.f, 1.f, 0.01f), 0.5f),
+    std::make_unique<AudioParameterFloat>("hpfFrequency", "HPF Frequency", NormalisableRange<float>(20.0f, 20000.0f, 1.0f), 440.0f),
+    std::make_unique<AudioParameterFloat>("lpfFrequency", "LPF Frequency", NormalisableRange<float>(20.0f, 20000.0f, 1.0f), 5000.0f)
     })
 {
 
@@ -93,18 +94,28 @@ void XyPadAudioProcessor::changeProgramName (int index, const juce::String& newN
 //==============================================================================
 void XyPadAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    // Assicurarsi che la lunghezza del buffer di ritardo sia sufficiente per il ritardo massimo desiderato
-    delayBufferLength = static_cast<int>(sampleRate * 0.035); // per 35 ms di ritardo massimo
-    delayBuffer.setSize(getTotalNumInputChannels(), delayBufferLength);
-    delayBuffer.clear();  // Aggiungere una chiamata a clear per evitare dati sporchi nel buffer
-    delayWritePosition = 0;
-}
+    filters.setSampleRate(sampleRate);
 
+    // Assicurarsi che la lunghezza del buffer di ritardo sia sufficiente per il ritardo massimo desiderato
+    const double maxDelayTimeMs = 35.0;
+    delayBufferLength = static_cast<int>(sampleRate * maxDelayTimeMs / 1000.0);
+
+    // Verifica se la dimensione del buffer è cambiata e rialloca solo se necessario
+    if (delayBuffer.getNumChannels() != getTotalNumInputChannels() || delayBuffer.getNumSamples() != delayBufferLength)
+    {
+        delayBuffer.setSize(getTotalNumInputChannels(), delayBufferLength);
+        delayBuffer.clear();  // Aggiungere una chiamata a clear per evitare dati sporchi nel buffer
+        delayWritePosition = 0;
+    }
+}
 
 void XyPadAudioProcessor::releaseResources()
 {
-
+    // Rilascia le risorse acquisite
+    delayBuffer.setSize(0, 0);  // Riduci la dimensione del buffer a 0 per rilasciare la memoria
+    // Aggiungi qui eventuali altre risorse da rilasciare
 }
+
 
 bool XyPadAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
@@ -120,20 +131,34 @@ bool XyPadAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) con
 void XyPadAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
+  
+
     auto delayTimeValue = parameters.getRawParameterValue("delayTime")->load();
     auto dryWetValue = parameters.getRawParameterValue("dryWetMix")->load();
+    auto hpfFreq = parameters.getRawParameterValue("hpfFrequency")->load();
+    auto lpfFreq = parameters.getRawParameterValue("lpfFrequency")->load();
 
-    DBG("Delay Time Value: " << delayTimeValue << ", Dry/Wet Value: " << dryWetValue);
+    DBG("Delay Time Value: " << delayTimeValue << ", Dry/Wet Value: " << dryWetValue
+        << ", HPF Frequency: " << hpfFreq << ", LPF Frequency: " << lpfFreq);
+
+    // Aggiorna i parametri dei filtri
+    filters.setHPFParameters(hpfFreq, 0.707f); // Resonance value is an example
+    filters.setLPFParameters(lpfFreq, 0.707f);
+
+    // Processa il buffer attraverso i filtri prima di applicare il delay
+    filters.process(buffer);
 
     for (int channel = 0; channel < getTotalNumInputChannels(); ++channel)
     {
         auto* channelData = buffer.getWritePointer(channel);
         auto* delayData = delayBuffer.getWritePointer(channel);
+        delayData[delayWritePosition % delayBufferLength] = 0.0f;
 
         int delayTimeInSamples = getChannelSpecificDelayTime(channel, delayTimeValue, 35.0f, getSampleRate());
         DBG("Channel: " << channel << ", Delay Time in Samples: " << delayTimeInSamples);
 
-        if (delayTimeInSamples > 0) // Applica il delay solo se il valore calcolato è maggiore di zero
+        // Applica il delay solo se il valore calcolato è maggiore di zero
+        if (delayTimeInSamples > 0)
         {
             for (int i = 0; i < buffer.getNumSamples(); ++i)
             {
@@ -147,15 +172,12 @@ void XyPadAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
         }
         else
         {
-            // Se il delayTimeInSamples è zero o negativo, non applicare il delay a questo canale
             DBG("No delay applied to Channel: " << channel);
         }
 
         delayWritePosition = (delayWritePosition + buffer.getNumSamples()) % delayBufferLength;
     }
 }
-
-
 
 
 int XyPadAudioProcessor::getChannelSpecificDelayTime(int channel, float delayTimeValue, float maxDelayTimeMs, double sampleRate)
@@ -168,9 +190,6 @@ int XyPadAudioProcessor::getChannelSpecificDelayTime(int channel, float delayTim
     }
     return 0; // Nessun delay se la condizione non è soddisfatta
 }
-
-
-
 
 
 //==============================================================================
@@ -205,18 +224,49 @@ AudioProcessorValueTreeState& XyPadAudioProcessor::getApvts()
     
 }
 
+
 void XyPadAudioProcessor::parameterChanged(const String& parameterID, float newValue)
 {
     if (parameterID.equalsIgnoreCase("delayTime"))
     {
-        DBG("Parameter Changed: " << parameterID << " to " << newValue);
-    }
-    if (parameterID.equalsIgnoreCase("dryWetMix"))
-    {
-        // Aggiorna qualsiasi cosa necessaria quando cambia il mix DRY/WET
-    }
+        // Smoothly update delayTime
+        float smoothValue = smoothParameterChange(prevDelayTime, newValue);
+        DBG("Parameter Changed: " << parameterID << " to " << smoothValue);
+        prevDelayTime = smoothValue;
 
+        // Handle delayTime parameter change
+        // Update the delayTime parameter in your code as needed
+    }
+    else if (parameterID.equalsIgnoreCase("dryWetMix"))
+    {
+        // Smoothly update dryWetMix
+        float smoothValue = smoothParameterChange(prevDryWetValue, newValue);
+        // ...
+    }
+    else if (parameterID.equalsIgnoreCase("hpfFrequency"))
+    {
+        // Smoothly update hpfFrequency
+        float smoothValue = smoothParameterChange(prevHPFFrequency, newValue);
+        DBG("HPF Frequency Parameter Changed: " << smoothValue);
+        prevHPFFrequency = smoothValue;
+
+        // Handle HPF frequency parameter change
+        // Update the HPF parameter in your Filters object
+        filters.setHPFParameters(smoothValue, 0.707f); // Example resonance value
+    }
+    else if (parameterID.equalsIgnoreCase("lpfFrequency"))
+    {
+        // Smoothly update lpfFrequency
+        float smoothValue = smoothParameterChange(prevLPFFrequency, newValue);
+        DBG("LPF Frequency Parameter Changed: " << smoothValue);
+        prevLPFFrequency = smoothValue;
+
+        // Handle LPF frequency parameter change
+        // Update the LPF parameter in your Filters object
+        filters.setLPFParameters(smoothValue, 0.707f); // Example resonance value
+    }
 }
+
 
 //==============================================================================
 // This creates new instances of the plugin..
