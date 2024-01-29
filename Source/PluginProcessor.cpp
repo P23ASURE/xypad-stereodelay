@@ -1,11 +1,3 @@
-/*
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin processor.
-
-  ==============================================================================
-*/
-
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
@@ -96,11 +88,10 @@ void XyPadAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     filters.setSampleRate(sampleRate);
 
-    // Assicurarsi che la lunghezza del buffer di ritardo sia sufficiente per il ritardo massimo desiderato
     const double maxDelayTimeMs = 35.0;
     delayBufferLength = static_cast<int>(sampleRate * maxDelayTimeMs / 1000.0);
 
-    // Verifica se la dimensione del buffer è cambiata e rialloca solo se necessario
+   // Check if the buffer size has changed and reallocate only if necessary
     if (delayBuffer.getNumChannels() != getTotalNumInputChannels() || delayBuffer.getNumSamples() != delayBufferLength)
     {
         delayBuffer.setSize(getTotalNumInputChannels(), delayBufferLength);
@@ -111,15 +102,12 @@ void XyPadAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 
 void XyPadAudioProcessor::releaseResources()
 {
-    // Rilascia le risorse acquisite
-    delayBuffer.setSize(0, 0);  // Riduci la dimensione del buffer a 0 per rilasciare la memoria
-    // Aggiungi qui eventuali altre risorse da rilasciare
+     delayBuffer.setSize(0, 0);    
 }
 
 
 bool XyPadAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
-    // Supporto per mono e stereo
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
         && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
@@ -140,12 +128,9 @@ void XyPadAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
 
     DBG("Delay Time Value: " << delayTimeValue << ", Dry/Wet Value: " << dryWetValue
         << ", HPF Frequency: " << hpfFreq << ", LPF Frequency: " << lpfFreq);
-
-    // Aggiorna i parametri dei filtri
-    filters.setHPFParameters(hpfFreq, 0.707f); // Resonance value is an example
+    
+    filters.setHPFParameters(hpfFreq, 0.707f); 
     filters.setLPFParameters(lpfFreq, 0.707f);
-
-    // Processa il buffer attraverso i filtri prima di applicare il delay
     filters.process(buffer);
 
     for (int channel = 0; channel < getTotalNumInputChannels(); ++channel)
@@ -156,8 +141,7 @@ void XyPadAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
 
         int delayTimeInSamples = getChannelSpecificDelayTime(channel, delayTimeValue, 35.0f, getSampleRate());
         DBG("Channel: " << channel << ", Delay Time in Samples: " << delayTimeInSamples);
-
-        // Applica il delay solo se il valore calcolato è maggiore di zero
+      
         if (delayTimeInSamples > 0)
         {
             for (int i = 0; i < buffer.getNumSamples(); ++i)
