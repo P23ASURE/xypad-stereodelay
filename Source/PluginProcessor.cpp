@@ -182,14 +182,30 @@ void XyPadAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
 
 int XyPadAudioProcessor::getChannelSpecificDelayTime(int channel, float delayTimeValue, float maxDelayTimeMs, double sampleRate)
 {
-    // Il canale sinistro usa valori negativi, il destro valori positivi
+    // Calcola un fattore di scala basato sulla metà del range di delayTimeValue (-17.5 a 17.5)
+    float scaleFactor = std::abs(delayTimeValue) / 17.5f;
+
+    // Calcola il ritardo effettivo in millisecondi
+    float actualDelayTimeMs = scaleFactor * maxDelayTimeMs;
+
+    // Converti il ritardo in millisecondi in campioni
+    int delayTimeInSamples = static_cast<int>(actualDelayTimeMs * sampleRate / 1000.0);
+
+    // Applica il ritardo al canale sinistro se delayTimeValue è negativo e al destro se è positivo
     if ((channel == 0 && delayTimeValue < 0) || (channel == 1 && delayTimeValue > 0))
     {
-        float modifiedDelayTime = maxDelayTimeMs * std::abs(delayTimeValue) / 17.5f;
-        return static_cast<int>(modifiedDelayTime * sampleRate / 1000.0);
+        DBG("Canale: " << (channel == 0 ? "Sinistro" : "Destro")
+            << ", Valore del Ritardo: " << delayTimeValue
+            << ", Tempo di Ritardo (ms): " << actualDelayTimeMs
+            << ", Tempo di Ritardo (campioni): " << delayTimeInSamples);
+
+        return delayTimeInSamples;
     }
-    return 0; // Nessun delay se la condizione non è soddisfatta
+
+    DBG("Nessun ritardo applicato al canale: " << (channel == 0 ? "Sinistro" : "Destro"));
+    return 0; // Nessun delay per il canale se la condizione non è soddisfatta
 }
+
 
 
 //==============================================================================
