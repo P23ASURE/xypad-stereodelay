@@ -25,8 +25,6 @@ public:
 private:
     float currentHPFFrequency;
     float currentLPFFrequency;
-    //float lastHPFFrequency;
-   //float lastLPFFrequency;
 
     double currentSampleRate;
     IIRFilter hpf, lpf;

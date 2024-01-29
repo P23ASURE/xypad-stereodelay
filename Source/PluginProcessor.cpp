@@ -91,11 +91,10 @@ void XyPadAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
     const double maxDelayTimeMs = 35.0;
     delayBufferLength = static_cast<int>(sampleRate * maxDelayTimeMs / 1000.0);
 
-   // Check if the buffer size has changed and reallocate only if necessary
     if (delayBuffer.getNumChannels() != getTotalNumInputChannels() || delayBuffer.getNumSamples() != delayBufferLength)
     {
         delayBuffer.setSize(getTotalNumInputChannels(), delayBufferLength);
-        delayBuffer.clear();  // Aggiungere una chiamata a clear per evitare dati sporchi nel buffer
+        delayBuffer.clear(); 
         delayWritePosition = 0;
     }
 }
@@ -166,27 +165,26 @@ void XyPadAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
 
 int XyPadAudioProcessor::getChannelSpecificDelayTime(int channel, float delayTimeValue, float maxDelayTimeMs, double sampleRate)
 {
-    // Calcola un fattore di scala basato sulla metà del range di delayTimeValue (-17.5 a 17.5)
+    // Calculate a scaling factor based on half of the delayTimeValue range. (-17.5 a 17.5)
     float scaleFactor = std::abs(delayTimeValue) / 17.5f;
-
-    // Calcola il ritardo effettivo in millisecondi
     float actualDelayTimeMs = scaleFactor * maxDelayTimeMs;
 
-    // Converti il ritardo in millisecondi in campioni
+    
     int delayTimeInSamples = static_cast<int>(actualDelayTimeMs * sampleRate / 1000.0);
 
-    // Applica il ritardo al canale sinistro se delayTimeValue è negativo e al destro se è positivo
+    // If delayTimesValues is negative, apply delay on left channel
+    // add delay on right channel if delayTimeValues is positive
     if ((channel == 0 && delayTimeValue < 0) || (channel == 1 && delayTimeValue > 0))
     {
-        DBG("Canale: " << (channel == 0 ? "Sinistro" : "Destro")
-            << ", Valore del Ritardo: " << delayTimeValue
-            << ", Tempo di Ritardo (ms): " << actualDelayTimeMs
-            << ", Tempo di Ritardo (campioni): " << delayTimeInSamples);
+        DBG("Channell: " << (channel == 0 ? "Left" : "Right")
+            << ", Delay Value: " << delayTimeValue
+            << ", Delay Tempo (ms): " << actualDelayTimeMs
+            << ", Delay Time (Samples): " << delayTimeInSamples);
 
         return delayTimeInSamples;
     }
 
-    DBG("Nessun ritardo applicato al canale: " << (channel == 0 ? "Sinistro" : "Destro"));
+    DBG("No Delay: " << (channel == 0 ? "Sinistro" : "Destro"));
     return 0; // Nessun delay per il canale se la condizione non è soddisfatta
 }
 
